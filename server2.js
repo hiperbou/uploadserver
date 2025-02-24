@@ -12,7 +12,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Load config file
 const configPath = path.join(__dirname, 'config.json');
-let config = { uploadDirectories: ['uploads'] };
+let config = { 
+    uploadDirectories: ['uploads'],
+    addTimestamp: false
+};
 
 if (fs.existsSync(configPath)) {
   config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
@@ -35,7 +38,8 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+    if(req.body.addTimestamp) cb(null, Date.now() + '-' + file.originalname);
+    else cb(null, file.originalname);
   }
 });
 
@@ -44,8 +48,6 @@ const upload = multer({ storage: storage });
 // Serve the HTML form
 app.get('/', (req, res) => {
   const uploadDir = path.join(__dirname, 'uploads');
-
-  // Read the list of uploaded files
   fs.readdir(uploadDir, (err, files) => {
     if (err) {
       console.error('Error reading uploads directory:', err);
@@ -184,11 +186,15 @@ app.get('/', (req, res) => {
       <body>
         <h1>Upload a File</h1>
         <form action="/upload" method="POST" enctype="multipart/form-data">
-          <input type="file" name="file" required>
           <label for="directory">Select Upload Directory:</label>
           <select name="directory" id="directory" required>
             ${directoryOptions}
           </select>
+          <label>
+          <input type="checkbox" id="addTimestamp" name="addTimestamp" ${config.addTimestamp? 'checked' : ''}>
+          <span>Add Timestamp to Filename:</span>
+          </label>
+          <input type="file" name="file" required>
           <button type="submit">Upload</button>
         </form>
 
@@ -208,10 +214,11 @@ app.get('/', (req, res) => {
 
 // Handle file upload
 app.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).send('No file uploaded.');
-  }
-  res.redirect('/');
+    if (!req.file) {
+      return res.status(400).send('No file uploaded.');
+    }
+    config.addTimestamp = req.body.addTimestamp ? true : false;
+    res.redirect('/');
 });
 
 // Handle adding new directories
