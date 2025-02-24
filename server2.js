@@ -31,7 +31,8 @@ if (!fs.existsSync(uploadDir)) {
 // Set up storage engine for multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, req.body.directory || 'uploads');
+    let reqDir = req.body.directory;
+    const uploadDir = path.join(reqDir.startsWith("/") ? "" : __dirname, reqDir || 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
