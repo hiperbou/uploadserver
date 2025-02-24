@@ -4,7 +4,10 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const port = 3000;
+
+const DEFAULT_PORT = 3000;
+// Get the port from command-line arguments or use the default
+const port = process.argv[2] || DEFAULT_PORT;
 
 // Set up storage engine for multer
 const storage = multer.diskStorage({
