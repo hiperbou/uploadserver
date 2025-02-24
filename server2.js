@@ -20,6 +20,11 @@ if (fs.existsSync(configPath)) {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
+let uploadDir = 'uploads';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // Set up storage engine for multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -38,211 +43,168 @@ const upload = multer({ storage: storage });
 
 // Serve the HTML form
 app.get('/', (req, res) => {
-    const uploadDir = path.join(__dirname, 'uploads');
-  
-    // Read the list of uploaded files
-    fs.readdir(uploadDir, (err, files) => {
-      if (err) {
-        console.error('Error reading uploads directory:', err);
-        return res.status(500).send('Unable to read uploaded files.');
-      }
-  
-      // Generate HTML for the list of files
-      const fileList = files.map(file => `
-        <li>
-          <a href="/download/${file}" download>${file}</a>
-        </li>
-      `).join('');
-  
-      // Generate HTML for the directory dropdown
-      const directoryOptions = config.uploadDirectories.map(dir => `
-        <option value="${dir}">${dir}</option>
-      `).join('');
-  
-      // Send the HTML response
-      res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>File Upload</title>
-          <style>
-            /* Basic Reset */
-            body, h1, h2, ul, form, input, button, select {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-  
+  const uploadDir = path.join(__dirname, 'uploads');
+
+  // Read the list of uploaded files
+  fs.readdir(uploadDir, (err, files) => {
+    if (err) {
+      console.error('Error reading uploads directory:', err);
+      return res.status(500).send('Unable to read uploaded files.');
+    }
+
+    // Generate HTML for the list of files
+    const fileList = files.map(file => `
+      <li>
+        <a href="/download/${file}" download>${file}</a>
+      </li>
+    `).join('');
+
+    // Generate HTML for the directory dropdown
+    const directoryOptions = config.uploadDirectories.map(dir => `
+      <option value="${dir}">${dir}</option>
+    `).join('');
+
+    // Send the HTML response
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>File Upload</title>
+        <style>
+          /* Basic Reset */
+          body, h1, h2, ul, form, input, button, select {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+
+          h1, h2 {
+            margin-bottom: 20px;
+            text-align: center;
+          }
+
+          form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+          }
+
+          label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+          }
+
+          input[type="file"],
+          input[type="text"],
+          select,
+          button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+          }
+
+          button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+          }
+
+          button:hover {
+            background-color: #218838;
+          }
+
+          ul {
+            list-style-type: none;
+            padding: 0;
+          }
+
+          ul li {
+            background: #fff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+
+          ul li a {
+            text-decoration: none;
+            color: #007bff;
+          }
+
+          ul li a:hover {
+            text-decoration: underline;
+          }
+
+          /* Responsive Design */
+          @media (min-width: 600px) {
             body {
-              font-family: Arial, sans-serif;
-              line-height: 1.6;
-              padding: 20px;
-              background-color: #f4f4f4;
+              max-width: 600px;
+              margin: 0 auto;
             }
-  
-            h1, h2 {
-              margin-bottom: 20px;
-              text-align: center;
-            }
-  
+
             form {
-              background: #fff;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-              margin-bottom: 20px;
+              display: grid;
+              grid-template-columns: 1fr;
+              gap: 15px;
             }
-  
+
             label {
-              display: block;
-              margin-bottom: 8px;
-              font-weight: bold;
+              grid-column: span 1;
             }
-  
+
+            input[type="file"],
             input[type="text"],
             select,
             button {
-              width: 100%;
-              padding: 10px;
-              margin-bottom: 15px;
-              border: 1px solid #ccc;
-              border-radius: 4px;
-              font-size: 16px;
+              margin-bottom: 0;
             }
-  
-            button {
-              background-color: #28a745;
-              color: white;
-              border: none;
-              cursor: pointer;
-            }
-  
-            button:hover {
-              background-color: #218838;
-            }
-  
-            ul {
-              list-style-type: none;
-              padding: 0;
-            }
-  
-            ul li {
-              background: #fff;
-              padding: 10px;
-              margin-bottom: 10px;
-              border-radius: 4px;
-              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
-  
-            ul li a {
-              text-decoration: none;
-              color: #007bff;
-            }
-  
-            ul li a:hover {
-              text-decoration: underline;
-            }
-  
-            /* Style for the file input container */
-            .file-input-container {
-              margin-bottom: 15px;
-              width: 100%; /* Ensure the container takes full width */
-            }
-  
-            /* File input styling */
-            input[type="file"] {
-              width: 100%; /* Make the input take the full width of its container */
-              padding: 10px;
-              margin-bottom: 15px;
-              border: 1px solid #ccc;
-              border-radius: 4px;
-              font-size: 16px;
-              background-color: #fff;
-              cursor: pointer;
-              box-sizing: border-box; /* Ensure padding and border are included in the width */
-            }
-  
-            /* Custom file input button */
-            input[type="file"]::file-selector-button {
-              padding: 10px 15px;
-              background-color: #28a745;
-              color: white;
-              border: none;
-              border-radius: 4px;
-              cursor: pointer;
-              margin-right: 10px;
-            }
-  
-            input[type="file"]::file-selector-button:hover {
-              background-color: #218838;
-            }
-  
-            /* Ensure the filename is visible */
-            input[type="file"] {
-              white-space: nowrap; /* Prevent the filename from wrapping */
-              overflow: hidden; /* Hide overflow */
-              text-overflow: ellipsis; /* Show ellipsis if the filename is too long */
-            }
-  
-            /* Responsive Design */
-            @media (min-width: 600px) {
-              body {
-                max-width: 600px;
-                margin: 0 auto;
-              }
-  
-              form {
-                display: grid;
-                grid-template-columns: 1fr;
-                gap: 15px;
-              }
-  
-              label {
-                grid-column: span 2;
-              }
-  
-              input[type="file"],
-              input[type="text"],
-              select,
-              button {
-                margin-bottom: 0;
-              }
-  
-              button {
-                grid-column: span 2;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Upload a File</h1>
-          <form action="/upload" method="POST" enctype="multipart/form-data">
-            <div class="file-input-container">
-              <input type="file" name="file" required>
-            </div>
-            <label for="directory">Select Upload Directory:</label>
-            <select name="directory" id="directory" required>
-              ${directoryOptions}
-            </select>
-            <button type="submit">Upload</button>
-          </form>
-  
-          <h2>Add New Directory</h2>
-          <form action="/add-directory" method="POST">
-            <input type="text" name="newDirectory" placeholder="New Directory Name" required>
-            <button type="submit">Add Directory</button>
-          </form>
-  
-          <h2>Uploaded Files</h2>
-          <ul>${fileList}</ul>
-        </body>
-        </html>
-      `);
-    });
-  });
 
+            button {
+              grid-column: span 1;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Upload a File</h1>
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+          <input type="file" name="file" required>
+          <label for="directory">Select Upload Directory:</label>
+          <select name="directory" id="directory" required>
+            ${directoryOptions}
+          </select>
+          <button type="submit">Upload</button>
+        </form>
+
+        <h2>Add New Upload Directory</h2>
+        <form action="/add-directory" method="POST">
+          <input type="text" name="newDirectory" placeholder="Upload Directory Name" required>
+          <button type="submit">Add Directory</button>
+        </form>
+
+        <h2>Uploaded Files</h2>
+        <ul>${fileList}</ul>
+      </body>
+      </html>
+    `);
+  });
+});
 
 // Handle file upload
 app.post('/upload', upload.single('file'), (req, res) => {
