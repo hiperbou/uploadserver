@@ -1,7 +1,20 @@
+/*
+//Deno imports
+import express from "npm:express@4.21.2";
+import multer from "npm:multer@1.4.5-lts.1";
+import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
+import qrcode from "npm:qrcode";
+const __dirname = import.meta.dirname;
+*/
+//Node imports
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const qrcode = require('qrcode');
 
 const app = express();
 const DEFAULT_PORT = 3000;
@@ -255,5 +268,47 @@ app.get('/download/:filename', (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  const interfaceIpAddress = getInterfaceIpAddress();
+  console.log(`Server is running on http://localhost:${port} Your IP address is: ${interfaceIpAddress}`);
+  printQrCode(`http://${interfaceIpAddress}:${port}`);
 });
+
+
+function getInterfaceIpAddress() {
+  const interfaces = os.networkInterfaces();
+
+  // Common Wi-Fi interface names across different operating systems
+  const wifiInterfaceNames = ['Wi-Fi', 'wlan0', 'en0'];
+
+  for (const interfaceName of wifiInterfaceNames) {
+      if (interfaces[interfaceName]) {
+          for (const iface of interfaces[interfaceName]) {
+              if (iface.family === 'IPv4' && !iface.internal) {
+                  return iface.address;
+              }
+          }
+      }
+  }
+
+  // Fallback if no Wi-Fi interface is found
+  for (const interfaceName in interfaces) {
+      const networkInterface = interfaces[interfaceName];
+      for (const iface of networkInterface) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+              return iface.address;
+          }
+      }
+  }
+
+  return '0.0.0.0'; // Fallback if no interface is found
+}
+
+function printQrCode(data) {
+  qrcode.toString(data, { type: 'terminal' }, (err, qrCode) => {
+      if (err) {
+          console.error('Error generating QR code:', err);
+          return;
+      }
+      console.log(qrCode);
+  });
+}
