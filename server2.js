@@ -25,9 +25,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Load config file
 const configPath = path.join(__dirname, 'config.json');
-let config = { 
-    uploadDirectories: ['uploads'],
-    addTimestamp: false
+let config = {
+  uploadDirectories: ['uploads'],
+  addTimestamp: false
 };
 
 if (fs.existsSync(configPath)) {
@@ -52,7 +52,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    if(req.body.addTimestamp) cb(null, Date.now() + '-' + file.originalname);
+    if (req.body.addTimestamp) cb(null, Date.now() + '-' + file.originalname);
     else cb(null, file.originalname);
   }
 });
@@ -205,7 +205,7 @@ app.get('/', (req, res) => {
             ${directoryOptions}
           </select>
           <label>
-          <input type="checkbox" id="addTimestamp" name="addTimestamp" ${config.addTimestamp? 'checked' : ''}>
+          <input type="checkbox" id="addTimestamp" name="addTimestamp" ${config.addTimestamp ? 'checked' : ''}>
           <span>Add Timestamp to Filename:</span>
           </label>
           <input type="file" name="file" required>
@@ -228,11 +228,11 @@ app.get('/', (req, res) => {
 
 // Handle file upload
 app.post('/upload', upload.single('file'), (req, res) => {
-    if (!req.file) {
-      return res.status(400).send('No file uploaded.');
-    }
-    config.addTimestamp = req.body.addTimestamp ? true : false;
-    res.redirect('/');
+  if (!req.file) {
+    return res.status(400).send('No file uploaded.');
+  }
+  config.addTimestamp = req.body.addTimestamp ? true : false;
+  res.redirect('/');
 });
 
 // Handle adding new directories
@@ -258,11 +258,51 @@ app.post('/add-directory', (req, res) => {
 // Serve files for download
 app.get('/download/:filename', (req, res) => {
   const filePath = path.join(__dirname, 'uploads', req.params.filename);
-  res.download(filePath, (err) => {
-    if (err) {
-      console.error('Error downloading file:', err);
-      res.status(404).send('File not found.');
+
+  // Handle connection close/abort events
+  let downloadAborted = false;
+
+  req.on('close', () => {
+    if (!res.writableEnded) {
+      downloadAborted = true;
+      console.log(`Download aborted by client: ${req.params.filename}`);
     }
+  });
+
+  // Set headers for file download
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`);
+
+  const fileStream = fs.createReadStream(filePath);
+
+  fileStream.on('error', (err) => {
+    console.error('Error reading file:', err);
+    if (!res.headersSent) {
+      // If the file doesn't exist, createReadStream will emit an 'error' event
+      // with code 'ENOENT'. We can treat this as a 404.
+      if (err.code === 'ENOENT') {
+        res.status(404).send('File not found.');
+      } else {
+        res.status(500).send('Error reading file.');
+      }
+    }
+  });
+
+  fileStream.on('end', () => {
+    if (!downloadAborted) {
+      console.log(`Download completed: ${req.params.filename}`);
+    }
+  });
+
+  // Pipe the file to response
+  fileStream.pipe(res);
+
+  // Handle response errors gracefully
+  res.on('error', (err) => {
+    if (!downloadAborted) {
+      console.error('Response error:', err);
+    }
+    fileStream.destroy();
   });
 });
 
